@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal - Internet Track</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0a0a0a;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        .terminal-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #0a0a0a;
+            padding: 20px;
+        }
+        .terminal-header {
+            color: #00ff41;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0,255,65,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .terminal-header .title {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+            color: #00ff41;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .terminal-output::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-output::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .terminal-output::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 4px;
+        }
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            border-top: 1px solid rgba(0,255,65,0.1);
+            padding-top: 15px;
+        }
+        .terminal-input-line .prompt {
+            color: #00ff41;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+        .terminal-input::placeholder {
+            color: rgba(0,255,65,0.3);
+        }
+        .status-text {
+            color: rgba(0,255,65,0.5);
+            font-size: 12px;
+            margin-top: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .command-highlight {
+            color: #ffbd2e;
+        }
+        .error-text {
+            color: #ff5f56;
+        }
+        .back-link {
+            color: rgba(0,255,65,0.5);
+            text-decoration: none;
+            font-size: 12px;
+        }
+        .back-link:hover {
+            color: #00ff41;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div>
+                <span class="title">📡 INTERNET TRACK v2.0</span>
+                <span class="ms-3" style="color: rgba(0,255,65,0.3); font-size: 12px;">OSINT Terminal</span>
+            </div>
+            <div>
+                <a href="/dashboard" class="back-link me-3">
+                    <i class="bi bi-arrow-left"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div class="terminal-output" id="terminalOutput">
+            <span>╔══════════════════════════════════════════════════════╗</span>
+            <span>║  🌐 INTERNET TRACK - OSINT Terminal              ║</span>
+            <span>╚══════════════════════════════════════════════════════╝</span>
+            <span></span>
+            <span style="color: rgba(0,255,65,0.5);">Type <span style="color: #ffbd2e;">help</span> to see available commands</span>
+            <span style="color: rgba(0,255,65,0.5);">Type <span style="color: #ffbd2e;">lookup phone +1234567890</span> to search</span>
+            <span></span>
+            <span style="color: #4facfe;">──────────────────────────────────────────────────────────</span>
+        </div>
+        
+        <div class="terminal-input-line">
+            <span class="prompt">$</span>
+            <input type="text" class="terminal-input" id="terminalInput" placeholder="Enter command..." autofocus>
+        </div>
+        <div class="status-text">
+            <span>💡 Tip: Use 'lookup phone' or 'lookup ip'</span>
+            <span id="commandStatus">Ready</span>
+        </div>
+    </div>
+    
+    <script>
+        const output = document.getElementById('terminalOutput');
+        const input = document.getElementById('terminalInput');
+        const status = document.getElementById('commandStatus');
+        
+        function appendOutput(text) {
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                const div = document.createElement('div');
+                div.textContent = line || ' ';
+                output.appendChild(div);
+            });
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function executeCommand(command) {
+            if (!command.trim()) return;
+            appendOutput(`$ ${command}`);
+            status.textContent = 'Processing...';
+            
+            fetch('/api/terminal/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: command })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.clear) {
+                    output.innerHTML = '';
+                } else if (data.exit) {
+                    window.location.href = '/logout';
+                } else {
+                    appendOutput(data.output);
+                }
+                status.textContent = 'Ready';
+                input.value = '';
+                input.focus();
+            })
+            .catch(err => {
+                appendOutput('❌ Error: ' + err.message);
+                status.textContent = 'Error';
+            });
+        }
+        
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                executeCommand(input.value);
+            }
+        });
+        
+        document.addEventListener('click', () => input.focus());
+        input.focus();
+    </script>
+</body>
+</html>
